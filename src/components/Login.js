@@ -1,32 +1,112 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import AxiosComponent from "../services/axiosComponent.js"; // Adjust path as needed
+import logo from "../assets/logo.png";
 
-const Login = () => {
+const Login = ({ onLogin }) => {
   const [formData, setFormData] = useState({
     email: "",
     password: "",
   });
 
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
-  const [userInfo, setUserInfo] = useState(null);
+  const [fieldErrors, setFieldErrors] = useState({
+    email: "",
+    password: "",
+  });
+  const [touched, setTouched] = useState({
+    email: false,
+    password: false,
+  });
 
-  // Check if user is already logged in on component mount
-  useEffect(() => {
-    if (AxiosComponent.isAuthenticated()) {
-      setIsLoggedIn(true);
-      // You might want to fetch user info here if needed
+  // Validation functions
+  const validateEmail = (email) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!email) {
+      return "Email is required";
     }
-  }, []);
+    if (!emailRegex.test(email)) {
+      return "Please enter a valid email address";
+    }
+    return "";
+  };
+
+  const validatePassword = (password) => {
+    if (!password) {
+      return "Password is required";
+    }
+    if (password.length < 6) {
+      return "Password must be at least 6 characters long";
+    }
+    return "";
+  };
+
+  const validateForm = () => {
+    const emailError = validateEmail(formData.email);
+    const passwordError = validatePassword(formData.password);
+
+    setFieldErrors({
+      email: emailError,
+      password: passwordError,
+    });
+
+    return !emailError && !passwordError;
+  };
 
   const handleChange = (e) => {
+    const { name, value } = e.target;
+
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value,
+      [name]: value,
     });
-    // Clear error when user starts typing
+
+    // Mark field as touched
+    setTouched({
+      ...touched,
+      [name]: true,
+    });
+
+    // Real-time validation
+    if (touched[name]) {
+      let fieldError = "";
+      if (name === "email") {
+        fieldError = validateEmail(value);
+      } else if (name === "password") {
+        fieldError = validatePassword(value);
+      }
+
+      setFieldErrors({
+        ...fieldErrors,
+        [name]: fieldError,
+      });
+    }
+
+    // Clear general error when user starts typing
     if (error) setError("");
+  };
+
+  const handleBlur = (e) => {
+    const { name, value } = e.target;
+
+    // Mark field as touched on blur
+    setTouched({
+      ...touched,
+      [name]: true,
+    });
+
+    // Validate field on blur
+    let fieldError = "";
+    if (name === "email") {
+      fieldError = validateEmail(value);
+    } else if (name === "password") {
+      fieldError = validatePassword(value);
+    }
+
+    setFieldErrors({
+      ...fieldErrors,
+      [name]: fieldError,
+    });
   };
 
   const handleSubmit = async (e) => {
@@ -34,37 +114,70 @@ const Login = () => {
     setIsLoading(true);
     setError("");
 
-    // Simple validation
-    if (!formData.email || !formData.password) {
-      setError("Please fill in all fields");
+    // Mark all fields as touched
+    setTouched({
+      email: true,
+      password: true,
+    });
+
+    // Validate form
+    if (!validateForm()) {
       setIsLoading(false);
       return;
     }
 
     try {
+      console.log("Attempting login with:", { email: formData.email });
+
       // Make API call to login
-      const response = await AxiosComponent.post("/auth/login", {
+      const response = await AxiosComponent.post("/api/auth/login", {
         email: formData.email,
         password: formData.password,
       });
 
-      if (response.data.success) {
-        // Store tokens
-        const { accessToken, refreshToken } = response.data.data.tokens;
-        AxiosComponent.setTokens(accessToken, refreshToken);
+      console.log("Login response:", response);
+      console.log("Response data:", response.data);
+      console.log("Success status:", response.data.success);
 
-        // Store user info
-        setUserInfo(response.data.data.user);
-        setIsLoggedIn(true);
+      if (response.data && response.data.success === true) {
+        // Store tokens
+        const tokens = response.data.data?.tokens;
+        if (tokens && tokens.accessToken && tokens.refreshToken) {
+          AxiosComponent.setTokens(tokens.accessToken, tokens.refreshToken);
+          console.log("Tokens stored successfully");
+        } else {
+          console.error("Tokens not found in response");
+        }
+
+        // Clear form and errors
+        setFormData({ email: "", password: "" });
+        setFieldErrors({ email: "", password: "" });
+        setTouched({ email: false, password: false });
 
         console.log("Login successful:", response.data.message);
+
+        // Call onLogin callback to notify App.js
+        if (onLogin) {
+          onLogin();
+        }
       } else {
-        setError(response.data.message || "Login failed");
+        console.log("Login failed - success is not true:", response.data);
+        setError(response.data?.message || "Login failed - invalid response");
       }
     } catch (error) {
-      console.error("Login error:", error);
+      console.error("Login error details:", error);
+      console.error("Error response:", error.response);
+      console.error("Error response data:", error.response?.data);
+
+      if (error.response && error.response.status === 200) {
+        // If we get a 200 but still hit the catch block, something is wrong
+        console.log("Got 200 but still in catch block - this is unusual");
+        console.log("Response data:", error.response.data);
+      }
+
       setError(
         error.response?.data?.message ||
+          error.message ||
           "Login failed. Please check your credentials."
       );
     } finally {
@@ -72,50 +185,12 @@ const Login = () => {
     }
   };
 
-  const handleLogout = () => {
-    AxiosComponent.removeToken();
-    setIsLoggedIn(false);
-    setUserInfo(null);
-    setFormData({ email: "", password: "" });
-  };
-
-  if (isLoggedIn) {
-    return (
-      <div style={styles.container}>
-        <div style={styles.welcomeCard}>
-          <div style={styles.logoContainer}>
-            <div style={styles.logo}>
-              <div style={styles.hands}>🤝</div>
-              <div style={styles.circle}></div>
-            </div>
-          </div>
-
-          <h2 style={styles.welcomeTitle}>Welcome to CrisisCircle!</h2>
-          {userInfo && (
-            <div style={styles.userInfo}>
-              <p style={styles.userName}>Hello, {userInfo.name}</p>
-              <p style={styles.userRole}>Role: {userInfo.role}</p>
-              <p style={styles.userStatus}>Status: {userInfo.status}</p>
-            </div>
-          )}
-
-          <button onClick={handleLogout} style={styles.logoutBtn}>
-            Logout
-          </button>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div style={styles.container}>
       <div style={styles.loginCard}>
         {/* Logo */}
         <div style={styles.logoContainer}>
-          <div style={styles.logo}>
-            <div style={styles.hands}>🤝</div>
-            <div style={styles.circle}></div>
-          </div>
+          <img src={logo} alt="CrisisCircle Logo" style={styles.logoImg} />
           <h1 style={styles.appName}>CRISISCIRCLE</h1>
         </div>
 
@@ -136,11 +211,20 @@ const Login = () => {
               name="email"
               value={formData.email}
               onChange={handleChange}
+              onBlur={handleBlur}
               placeholder="Enter your email"
-              style={styles.input}
+              style={{
+                ...styles.input,
+                ...(fieldErrors.email && touched.email
+                  ? styles.inputError
+                  : {}),
+              }}
               required
               disabled={isLoading}
             />
+            {fieldErrors.email && touched.email && (
+              <span style={styles.fieldError}>{fieldErrors.email}</span>
+            )}
           </div>
 
           <div style={styles.formGroup}>
@@ -153,11 +237,20 @@ const Login = () => {
               name="password"
               value={formData.password}
               onChange={handleChange}
+              onBlur={handleBlur}
               placeholder="Enter your password"
-              style={styles.input}
+              style={{
+                ...styles.input,
+                ...(fieldErrors.password && touched.password
+                  ? styles.inputError
+                  : {}),
+              }}
               required
               disabled={isLoading}
             />
+            {fieldErrors.password && touched.password && (
+              <span style={styles.fieldError}>{fieldErrors.password}</span>
+            )}
           </div>
 
           <button
@@ -180,82 +273,58 @@ const styles = {
   container: {
     minHeight: "100vh",
     background:
-      "linear-gradient(135deg, #2c3e50 0%, #3498db 50%, #6dd5ed 100%)",
+      "linear-gradient(135deg, #f1f5f9 0%, #e0f2fe 25%, #bae6fd 50%, #7dd3fc 75%, #38bdf8 100%)",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
     padding: "20px",
-    fontFamily: '"Segoe UI", Tahoma, Geneva, Verdana, sans-serif',
+    fontFamily:
+      '"Inter", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
   },
   loginCard: {
-    background: "rgba(255, 255, 255, 0.95)",
-    borderRadius: "20px",
+    background: "rgba(255, 255, 255, 0.85)",
+    borderRadius: "24px",
     padding: "40px",
-    boxShadow: "0 20px 40px rgba(0, 0, 0, 0.1)",
-    backdropFilter: "blur(10px)",
+    boxShadow: "0 8px 32px rgba(0, 0, 0, 0.08)",
+    backdropFilter: "blur(20px)",
+    border: "1px solid rgba(255, 255, 255, 0.2)",
     width: "100%",
     maxWidth: "400px",
-    textAlign: "center",
-  },
-  welcomeCard: {
-    background: "rgba(255, 255, 255, 0.95)",
-    borderRadius: "20px",
-    padding: "40px",
-    boxShadow: "0 20px 40px rgba(0, 0, 0, 0.1)",
-    backdropFilter: "blur(10px)",
-    width: "100%",
-    maxWidth: "500px",
     textAlign: "center",
   },
   logoContainer: {
     marginBottom: "30px",
   },
-  logo: {
+  logoImg: {
     width: "80px",
     height: "80px",
-    background:
-      "linear-gradient(135deg, #2c3e50 0%, #3498db 50%, #6dd5ed 100%)",
     borderRadius: "50%",
     margin: "0 auto 20px",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    position: "relative",
-    boxShadow: "0 10px 20px rgba(0, 0, 0, 0.2)",
-  },
-  hands: {
-    fontSize: "30px",
-    color: "white",
-  },
-  circle: {
-    position: "absolute",
-    top: "10px",
-    width: "12px",
-    height: "12px",
-    background: "white",
-    borderRadius: "50%",
+    display: "block",
+    boxShadow: "0 4px 20px rgba(0, 0, 0, 0.1)",
   },
   appName: {
     fontSize: "24px",
-    fontWeight: "bold",
-    color: "#2c3e50",
+    fontWeight: "500",
+    color: "#475569",
     margin: "0",
-    letterSpacing: "1px",
+    letterSpacing: "0.5px",
   },
   form: {
     textAlign: "left",
   },
   loginTitle: {
     fontSize: "28px",
-    fontWeight: "bold",
-    color: "#2c3e50",
+    fontWeight: "400",
+    color: "#334155",
     margin: "0 0 8px 0",
     textAlign: "center",
   },
   loginSubtitle: {
-    color: "#7f8c8d",
+    color: "#94a3b8",
     margin: "0 0 30px 0",
     textAlign: "center",
+    fontWeight: "300",
   },
   formGroup: {
     marginBottom: "20px",
@@ -263,92 +332,60 @@ const styles = {
   label: {
     display: "block",
     marginBottom: "8px",
-    fontWeight: "600",
-    color: "#2c3e50",
+    fontWeight: "400",
+    color: "#475569",
   },
   input: {
     width: "100%",
     padding: "12px 16px",
-    border: "2px solid #e0e0e0",
-    borderRadius: "10px",
+    border: "1px solid #e2e8f0",
+    borderRadius: "12px",
     fontSize: "16px",
-    transition: "border-color 0.3s ease",
+    transition: "border-color 0.3s ease, box-shadow 0.3s ease",
     boxSizing: "border-box",
-    ":focus": {
-      borderColor: "#3498db",
-      outline: "none",
-    },
+    background: "rgba(255, 255, 255, 0.8)",
+    color: "#334155",
+    fontWeight: "300",
+  },
+  inputError: {
+    borderColor: "#ef4444",
+    boxShadow: "0 0 0 3px rgba(239, 68, 68, 0.1)",
+  },
+  fieldError: {
+    color: "#ef4444",
+    fontSize: "12px",
+    marginTop: "4px",
+    display: "block",
+    fontWeight: "300",
   },
   loginBtn: {
     width: "100%",
     padding: "14px",
-    background: "linear-gradient(135deg, #3498db, #2c3e50)",
+    background: "linear-gradient(135deg, #94a3b8, #64748b)",
     color: "white",
     border: "none",
-    borderRadius: "10px",
+    borderRadius: "12px",
     fontSize: "16px",
-    fontWeight: "bold",
+    fontWeight: "400",
     cursor: "pointer",
     transition: "transform 0.2s ease, box-shadow 0.2s ease",
-    boxShadow: "0 4px 15px rgba(52, 152, 219, 0.3)",
+    boxShadow: "0 2px 12px rgba(148, 163, 184, 0.3)",
     marginTop: "10px",
   },
   loginBtnDisabled: {
-    opacity: 0.7,
+    opacity: 0.6,
     cursor: "not-allowed",
     transform: "none",
   },
-  logoutBtn: {
-    padding: "12px 30px",
-    background: "linear-gradient(135deg, #e74c3c, #c0392b)",
-    color: "white",
-    border: "none",
-    borderRadius: "10px",
-    fontSize: "16px",
-    fontWeight: "bold",
-    cursor: "pointer",
-    transition: "transform 0.2s ease",
-    boxShadow: "0 4px 15px rgba(231, 76, 60, 0.3)",
-  },
   errorMessage: {
-    background: "#ffebee",
-    color: "#c62828",
+    background: "#fef2f2",
+    color: "#dc2626",
     padding: "12px",
-    borderRadius: "8px",
+    borderRadius: "12px",
     marginBottom: "20px",
-    border: "1px solid #ffcdd2",
+    border: "1px solid #fecaca",
     fontSize: "14px",
-  },
-  welcomeTitle: {
-    fontSize: "32px",
-    fontWeight: "bold",
-    color: "#2c3e50",
-    margin: "0 0 20px 0",
-  },
-  userInfo: {
-    background: "#f8f9fa",
-    padding: "20px",
-    borderRadius: "10px",
-    marginBottom: "30px",
-    textAlign: "left",
-  },
-  userName: {
-    fontSize: "18px",
-    fontWeight: "bold",
-    color: "#2c3e50",
-    margin: "0 0 8px 0",
-  },
-  userRole: {
-    fontSize: "14px",
-    color: "#7f8c8d",
-    margin: "0 0 4px 0",
-    textTransform: "capitalize",
-  },
-  userStatus: {
-    fontSize: "14px",
-    color: "#27ae60",
-    margin: "0",
-    textTransform: "capitalize",
+    fontWeight: "300",
   },
 };
 
