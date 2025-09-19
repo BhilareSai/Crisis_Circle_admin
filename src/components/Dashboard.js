@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import AxiosComponent from "../services/axiosComponent";
 import UsersTable from "./AdminUSerTable.js"; // Import the new UsersTable component
 import logo from "../assets/logo.png";
-
+import AnnouncementPage from "./announcementPage.js";
 const Dashboard = ({ onLogout }) => {
   const [dashboardData, setDashboardData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -82,6 +82,9 @@ const Dashboard = ({ onLogout }) => {
     switch (activeTab) {
       case "users":
         return <UsersTable />;
+
+      case "announcements":
+        return <AnnouncementPage />;
       case "dashboard":
       default:
         return renderDashboardContent();
@@ -340,7 +343,9 @@ const Dashboard = ({ onLogout }) => {
               <span style={styles.actionIcon}>👥</span>
               Manage Users
             </button>
-            <button style={styles.actionBtn}>
+            <button style={styles.actionBtn}
+           
+            >
               <span style={styles.actionIcon}>📝</span>
               New Announcement
             </button>
@@ -410,7 +415,9 @@ const Dashboard = ({ onLogout }) => {
               <span style={styles.tabIcon}>📦</span>
               Help Items
             </button>
-            <button style={styles.navTab}>
+            <button style={styles.navTab}
+            onClick={() => handleTabChange("announcements")}
+            >
               <span style={styles.tabIcon}>📢</span>
               Announcements
             </button>
