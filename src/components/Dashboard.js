@@ -3,6 +3,7 @@ import AxiosComponent from "../services/axiosComponent";
 import UsersTable from "./AdminUSerTable.js"; // Import the new UsersTable component
 import logo from "../assets/logo.png";
 import AnnouncementPage from "./announcementPage.js";
+import HelpItemsTable from "./helpItems.js";
 const Dashboard = ({ onLogout }) => {
   const [dashboardData, setDashboardData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -85,6 +86,8 @@ const Dashboard = ({ onLogout }) => {
 
       case "announcements":
         return <AnnouncementPage />;
+      case "helpItems":
+        return <HelpItemsTable />;  
       case "dashboard":
       default:
         return renderDashboardContent();
@@ -411,7 +414,9 @@ const Dashboard = ({ onLogout }) => {
               <span style={styles.tabIcon}>🆘</span>
               Help Requests
             </button>
-            <button style={styles.navTab}>
+            <button style={styles.navTab}
+            onClick={() => handleTabChange("helpItems")}
+            >
               <span style={styles.tabIcon}>📦</span>
               Help Items
             </button>
