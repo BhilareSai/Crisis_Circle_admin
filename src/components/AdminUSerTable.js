@@ -144,8 +144,8 @@ const UsersTable = () => {
 
       if (response.data && response.data.success) {
         // Update user in local state
-        setUsers(prev => prev.map(user => 
-          user._id === userId 
+        setUsers(prev => prev.map(user =>
+          user._id === userId
             ? { ...user, status: "rejected" }
             : user
         ));
@@ -155,6 +155,34 @@ const UsersTable = () => {
     } catch (error) {
       console.error("Error rejecting user:", error);
       setError(error.response?.data?.message || "Failed to reject user");
+    } finally {
+      setActionLoading(prev => ({ ...prev, [userId]: null }));
+    }
+  };
+
+  // Handle delete rejected user
+  const handleDeleteUser = async (userId) => {
+    const confirmDelete = window.confirm("Are you sure you want to delete this rejected user? This action cannot be undone.");
+    if (!confirmDelete) return;
+
+    try {
+      setActionLoading(prev => ({ ...prev, [userId]: "deleting" }));
+
+      const response = await AxiosComponent.delete(`/api/admin/users/rejected`, {
+        data: {
+          userIds: [userId]
+        }
+      });
+
+      if (response.data && response.data.success) {
+        // Remove user from local state
+        setUsers(prev => prev.filter(user => user._id !== userId));
+        // Refresh to get updated stats
+        fetchUsers();
+      }
+    } catch (error) {
+      console.error("Error deleting user:", error);
+      setError(error.response?.data?.message || "Failed to delete user");
     } finally {
       setActionLoading(prev => ({ ...prev, [userId]: null }));
     }
@@ -460,6 +488,20 @@ const UsersTable = () => {
                               {actionLoading[user._id] === "rejecting" ? "..." : "✗"}
                             </button>
                           </>
+                        )}
+                        {user.status === "rejected" && (
+                          <button
+                            style={{
+                              ...styles.actionBtn,
+                              ...styles.deleteBtn,
+                              ...(actionLoading[user._id] === "deleting" ? styles.actionBtnLoading : {})
+                            }}
+                            onClick={() => handleDeleteUser(user._id)}
+                            disabled={actionLoading[user._id]}
+                            title="Delete rejected user"
+                          >
+                            {actionLoading[user._id] === "deleting" ? "..." : "🗑️"}
+                          </button>
                         )}
                         <button style={{ ...styles.actionBtn, ...styles.viewBtn }}>
                           👁️
@@ -861,6 +903,11 @@ const styles = {
   rejectBtn: {
     color: "#dc2626",
     borderColor: "#fca5a5",
+  },
+  deleteBtn: {
+    color: "#dc2626",
+    borderColor: "#fca5a5",
+    background: "#fef2f2",
   },
   viewBtn: {
     color: "#3b82f6",
