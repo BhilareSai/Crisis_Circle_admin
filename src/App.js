@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import Login from "./components/Login";
 import Dashboard from "./components/Dashboard";
+import PrivacyPolicy from "./components/PrivacyPolicy";
 import AxiosComponent from "./services/axiosComponent";
 import "./App.css";
 
@@ -53,15 +55,48 @@ function App() {
     );
   }
 
-  // Render appropriate component based on authentication status
+  // Render routing structure
   return (
-    <div className="App">
-      {isAuthenticated ? (
-        <Dashboard onLogout={handleLogout} />
-      ) : (
-        <Login onLogin={handleLogin} />
-      )}
-    </div>
+    <Router>
+      <div className="App">
+        <Routes>
+          {/* Public route for privacy policy */}
+          <Route path="/privacy" element={<PrivacyPolicy />} />
+
+          {/* Protected routes */}
+          <Route
+            path="/dashboard"
+            element={
+              isAuthenticated ? (
+                <Dashboard onLogout={handleLogout} />
+              ) : (
+                <Navigate to="/login" replace />
+              )
+            }
+          />
+
+          {/* Login route */}
+          <Route
+            path="/login"
+            element={
+              !isAuthenticated ? (
+                <Login onLogin={handleLogin} />
+              ) : (
+                <Navigate to="/dashboard" replace />
+              )
+            }
+          />
+
+          {/* Default redirect */}
+          <Route
+            path="/"
+            element={
+              <Navigate to={isAuthenticated ? "/dashboard" : "/login"} replace />
+            }
+          />
+        </Routes>
+      </div>
+    </Router>
   );
 }
 

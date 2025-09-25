@@ -4,6 +4,7 @@ import UsersTable from "./AdminUSerTable.js"; // Import the new UsersTable compo
 import logo from "../assets/logo.png";
 import AnnouncementPage from "./announcementPage.js";
 import HelpItemsTable from "./helpItems.js";
+import PrivacyPolicy from "./PrivacyPolicy.js";
 const Dashboard = ({ onLogout }) => {
   const [dashboardData, setDashboardData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -87,7 +88,9 @@ const Dashboard = ({ onLogout }) => {
       case "announcements":
         return <AnnouncementPage />;
       case "helpItems":
-        return <HelpItemsTable />;  
+        return <HelpItemsTable />;
+      case "privacy":
+        return <PrivacyPolicy />;
       case "dashboard":
       default:
         return renderDashboardContent();
@@ -426,6 +429,16 @@ const Dashboard = ({ onLogout }) => {
               <span style={styles.tabIcon}>📢</span>
               Announcements
             </button>
+            <button
+              style={{
+                ...styles.navTab,
+                ...(activeTab === "privacy" ? styles.navTabActive : {}),
+              }}
+              onClick={() => handleTabChange("privacy")}
+            >
+              <span style={styles.tabIcon}>🔒</span>
+              Privacy
+            </button>
           </div>
         </div>
 
@@ -453,12 +466,28 @@ const Dashboard = ({ onLogout }) => {
             <h2 style={styles.pageTitle}>
               {activeTab === "dashboard"
                 ? "Dashboard Overview"
-                : "User Management"}
+                : activeTab === "users"
+                ? "User Management"
+                : activeTab === "announcements"
+                ? "Announcements"
+                : activeTab === "helpItems"
+                ? "Help Items"
+                : activeTab === "privacy"
+                ? "Privacy Policy"
+                : "Dashboard Overview"}
             </h2>
             <p style={styles.pageSubtitle}>
               {activeTab === "dashboard"
                 ? "Monitor your platform's performance and key metrics"
-                : "Manage user accounts, approvals, and permissions"}
+                : activeTab === "users"
+                ? "Manage user accounts, approvals, and permissions"
+                : activeTab === "announcements"
+                ? "Create and manage platform announcements"
+                : activeTab === "helpItems"
+                ? "Manage help items and categories"
+                : activeTab === "privacy"
+                ? "View our privacy policy and data protection information"
+                : "Monitor your platform's performance and key metrics"}
             </p>
           </div>
           <div style={styles.headerActions}>
