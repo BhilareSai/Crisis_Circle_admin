@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-d
 import Login from "./components/Login";
 import Dashboard from "./components/Dashboard";
 import PrivacyPolicy from "./components/PrivacyPolicy";
+import Support from "./components/Support";
 import AxiosComponent from "./services/axiosComponent";
 import "./App.css";
 
@@ -60,8 +61,9 @@ function App() {
     <Router>
       <div className="App">
         <Routes>
-          {/* Public route for privacy policy */}
+          {/* Public routes */}
           <Route path="/privacy" element={<PrivacyPolicy />} />
+          <Route path="/support" element={<Support />} />
 
           {/* Protected routes */}
           <Route
